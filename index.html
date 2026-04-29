@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Earn Coins App</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+      background: #0f172a;
+      color: white;
+      padding: 15px;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin: 6px;
+      border-radius: 10px;
+      border: none;
+      background: #22c55e;
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #16a34a;
+    }
+
+    button:disabled {
+      background: #6b7280;
+      cursor: not-allowed;
+    }
+
+    .box {
+      background: #1e293b;
+      padding: 10px;
+      border-radius: 10px;
+      margin: 10px;
+    }
+
+    canvas {
+      border-radius: 50%;
+      box-shadow: 0 0 15px #22c55e;
+      margin-top: 10px;
+    }
+
+    .error {
+      color: #ef4444;
+      font-size: 12px;
+      margin-top: 5px;
+    }
+
+    .success {
+      color: #22c55e;
+      font-size: 12px;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>💰 Earn Coins</h2>
+
+<p id="user"></p>
+
+<div class="box">
+  <p>Coins: <span id="coins">0</span></p>
+  <p id="level">Level 1</p>
+  <p id="progress">0 / 500</p>
+  <p>🎡 Spins left: <span id="spinCount">5</span></p>
+</div>
+
+<button onclick="watchAd()" id="adBtn">🎁 Watch Ad (+5)</button>
+<button onclick="dailyBonus()" id="bonusBtn">🎁 Daily Bonus</button>
+<button onclick="watchAdForSpin()" id="adSpinBtn">🎥 Ad Spin</button>
+<button onclick="redeem()" id="redeemBtn">💰 Redeem (5000)</button>
+
+<div>
+  <div style="font-size:24px;">🔻</div>
+  <canvas id="wheelCanvas" width="220" height="220"></canvas>
+</div>
+
+<p id="resultText"></p>
+<p id="errorMessage" class="error"></p>
+<p id="successMessage" class="success"></p>
+
+<script>
+
+// ================= STORAGE MANAGER WITH VALIDATION =================
+const StorageManager = {
+  getItem: function(key, defaultValue = null) {
+    try {
+      const value = localStorage.getItem(key);
+      if (value === null) return defaultValue;
+      
+      // Validate stored values
+      if (key === 'coins' || key === 'spins') {
+        const parsed = parseInt(value);
+        if (isNaN(parsed) || parsed < 0) {
+          console.warn(`Invalid value for ${key}, resetting to default`);
+          return defaultValue;
+        }
+        return parsed;
+      }
+      return value;
+    } catch (e) {
+      console.error(`Storage error reading ${key}:`, e);
+      return defaultValue;
+    }
+  },
+
+  setItem: function(key, value) {
+    try {
+      // Validate before storing
+      if (key === 'coins' || key === 'spins') {
+        const num = parseInt(value);
+        if (isNaN(num) || num < 0) {
+          throw new Error(`Invalid ${key} value: ${value}`);
+        }
+        localStorage.setItem(key, num);
+      } else {
+        localStorage.setItem(key, value);
+      }
+      return true;
+    } catch (e) {
+      console.error(`Storage error writing ${key}:`, e);
+      showError(`Failed to save data: ${e.message}`);
+      return false;
+    }
+  }
+};
+
+// ================= UI MESSAGING =================
+function showError(message) {
+  const el = document.getElementById('errorMessage');
+  el.innerText = message;
+  setTimeout(() => el.innerText = '', 4000);
+}
+
+function showSuccess(message) {
+  const el = document.getElementById('successMessage');
+  el.innerText = message;
+  setTimeout(() => el.innerText = '', 3000);
+}
+
+// ================= USER =================
+let user = null;
+try {
+  user = window.Telegram.WebApp.initDataUnsafe.user;
+  if (!user) throw new Error('No user data');
+} catch (e) {
+  console.warn('Telegram user not available:', e);
+  user = { first_name: 'User' };
+}
+
+document.getElementById("user").innerText =
+  "Hello " + (user?.first_name || "User");
+
+// ================= DATA =================
+let coins = StorageManager.getItem("coins", 0);
+let spinsToday = StorageManager.getItem("spins", 0);
+let lastSpinDate = StorageManager.getItem("spinDate", null);
+let today = new Date().toDateString();
+
+// Reset spins if new day
+if (lastSpinDate !== today) {
+  spinsToday = 0;
+  StorageManager.setItem("spinDate", today);
+}
+
+// ================= UPDATE UI =================
+function updateUI() {
+  try {
+    document.getElementById("coins").innerText = coins;
+
+    let level = Math.floor(coins / 500) + 1;
+    let progress = coins % 500;
+
+    document.getElementById("level").innerText = "Level " + level;
+    document.getElementById("progress").innerText = progress + " / 500";
+
+    let spinsLeft = Math.max(0, 5 - spinsToday);
+    document.getElementById("spinCount").innerText = spinsLeft;
+
+    // Update button states
+    document.getElementById("bonusBtn").disabled = isDaily BonusAlreadyClaimed();
+    document.getElementById("redeemBtn").disabled = coins < 5000;
+
+    // Persist to storage
+    StorageManager.setItem("coins", coins);
+    StorageManager.setItem("spins", spinsToday);
+  } catch (e) {
+    console.error('UI update error:', e);
+    showError('Error updating UI');
+  }
+}
+
+// ================= WATCH AD =================
+function watchAd() {
+  try {
+    const adUrl = "https://omg10.com/4/10916425";
+    
+    if (!adUrl.startsWith('http')) {
+      throw new Error('Invalid ad URL');
+    }
+
+    window.open(adUrl, "_blank");
+
+    coins += 5;
+    updateUI();
+    showSuccess('🎉 +5 coins!');
+  } catch (e) {
+    console.error('Ad error:', e);
+    showError('Failed to open ad: ' + e.message);
+  }
+}
+
+// ================= DAILY BONUS =================
+function isDailyBonusAlreadyClaimed() {
+  try {
+    const last = StorageManager.getItem("bonusDate", null);
+    return last === today;
+  } catch (e) {
+    console.error('Bonus check error:', e);
+    return false;
+  }
+}
+
+function dailyBonus() {
+  try {
+    if (isDailyBonusAlreadyClaimed()) {
+      showError("Already claimed today!");
+      return;
+    }
+
+    coins += 50;
+    StorageManager.setItem("bonusDate", today);
+    updateUI();
+
+    showSuccess("🎉 +50 coins!");
+  } catch (e) {
+    console.error('Daily bonus error:', e);
+    showError('Failed to claim bonus: ' + e.message);
+  }
+}
+
+// ================= REDEEM =================
+function redeem() {
+  try {
+    if (coins < 5000) {
+      showError("Need 5000 coins!");
+      return;
+    }
+
+    coins -= 5000;
+    updateUI();
+
+    // Fixed Telegram link - use your actual username
+    const telegramUsername = "MALSOM_VAIPHEI"; // Replace with your actual username
+    const telegramUrl = `https://t.me/${telegramUsername}`;
+
+    if (!telegramUrl.startsWith('http')) {
+      throw new Error('Invalid Telegram URL');
+    }
+
+    window.open(telegramUrl, "_blank");
+    showSuccess("Request sent! Contact admin.");
+  } catch (e) {
+    console.error('Redeem error:', e);
+    showError('Failed to process redeem: ' + e.message);
+    // Refund coins on error
+    coins += 5000;
+    updateUI();
+  }
+}
+
+// ================= SPIN SYSTEM =================
+let canvas = document.getElementById("wheelCanvas");
+let ctx = canvas.getContext("2d");
+
+let rewards = [5, 10, 20, 50];
+let colors = ["#22c55e","#16a34a","#15803d","#4ade80"];
+
+let currentRotation = 0;
+let spinning = false;
+
+function drawWheel() {
+  try {
+    let arc = Math.PI * 2 / rewards.length;
+
+    for (let i = 0; i < rewards.length; i++) {
+      ctx.beginPath();
+      ctx.fillStyle = colors[i];
+      ctx.moveTo(110,110);
+      ctx.arc(110,110,100, arc*i, arc*(i+1));
+      ctx.fill();
+
+      ctx.save();
+      ctx.translate(110,110);
+      ctx.rotate(arc*i + arc/2);
+
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 14px Arial";
+      ctx.fillText(rewards[i], 50, 5);
+
+      ctx.restore();
+    }
+  } catch (e) {
+    console.error('Wheel drawing error:', e);
+    showError('Failed to draw wheel');
+  }
+}
+
+drawWheel();
+
+function spinWheel() {
+  try {
+    if (spinning) {
+      showError("Already spinning!");
+      return;
+    }
+
+    if (spinsToday >= 5) {
+      showError("Use Ad Spin or come back tomorrow!");
+      return;
+    }
+
+    spinsToday++;
+    StorageManager.setItem("spins", spinsToday);
+    spinLogic();
+  } catch (e) {
+    console.error('Spin error:', e);
+    showError('Spin failed: ' + e.message);
+    spinsToday = Math.max(0, spinsToday - 1);
+    updateUI();
+  }
+}
+
+function watchAdForSpin() {
+  try {
+    const adUrl = "https://omg10.com/4/10916425";
+    
+    if (!adUrl.startsWith('http')) {
+      throw new Error('Invalid ad URL');
+    }
+
+    window.open(adUrl, "_blank");
+
+    // Increment spins for ad spin
+    setTimeout(() => {
+      try {
+        spinLogic();
+      } catch (e) {
+        console.error('Ad spin error:', e);
+        showError('Ad spin failed: ' + e.message);
+      }
+    }, 2000);
+  } catch (e) {
+    console.error('Ad for spin error:', e);
+    showError('Failed to open ad: ' + e.message);
+  }
+}
+
+function spinLogic() {
+  try {
+    if (spinning) return;
+    
+    spinning = true;
+
+    let weighted = [5,5,5,10,10,20,50];
+    let reward = weighted[Math.floor(Math.random()*weighted.length)];
+
+    let index = rewards.indexOf(reward);
+    if (index === -1) {
+      throw new Error('Invalid reward: ' + reward);
+    }
+
+    let arc = 360 / rewards.length;
+
+    let extra = 360 * (5 + Math.random()*3);
+    let target = 360 - (index * arc) - arc/2;
+
+    let final = currentRotation + extra + target;
+
+    canvas.style.transition = "transform 4s ease-out";
+    canvas.style.transform = `rotate(${final}deg)`;
+
+    currentRotation = final % 360;
+
+    setTimeout(() => {
+      try {
+        coins += reward;
+        updateUI();
+
+        document.getElementById("resultText").innerText =
+          reward == 50 ? "🔥 JACKPOT 50!" : "🎉 Won " + reward;
+
+        showSuccess(`Won ${reward} coins!`);
+        spinning = false;
+      } catch (e) {
+        console.error('Spin completion error:', e);
+        showError('Error completing spin');
+        spinning = false;
+      }
+    }, 4000);
+  } catch (e) {
+    console.error('Spin logic error:', e);
+    showError('Spin error: ' + e.message);
+    spinning = false;
+  }
+}
+
+// ================= INITIALIZATION =================
+try {
+  updateUI();
+  showSuccess('App loaded successfully');
+} catch (e) {
+  console.error('Initialization error:', e);
+  showError('Failed to initialize app');
+}
+
+</script>
+
+</body>
+</html>
