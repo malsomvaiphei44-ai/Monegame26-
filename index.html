@@ -187,7 +187,7 @@ function updateUI() {
     document.getElementById("spinCount").innerText = spinsLeft;
 
     // Update button states
-    document.getElementById("bonusBtn").disabled = isDaily BonusAlreadyClaimed();
+    document.getElementById("bonusBtn").disabled = isDailyBonusAlreadyClaimed();
     document.getElementById("redeemBtn").disabled = coins < 5000;
 
     // Persist to storage
@@ -259,8 +259,8 @@ function redeem() {
     coins -= 5000;
     updateUI();
 
-    // Fixed Telegram link - use your actual username
-    const telegramUsername = "MALSOM_VAIPHEI"; // Replace with your actual username
+    // Fixed Telegram link with your username
+    const telegramUsername = "malsom_vaiphei";
     const telegramUrl = `https://t.me/${telegramUsername}`;
 
     if (!telegramUrl.startsWith('http')) {
